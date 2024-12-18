@@ -31,15 +31,18 @@ average lifetime in the population is approximately equal to the fixed
 costs of genotyping and breeding, the optimal strategy is to follow up
 approximately 70% of the population.
 
-**[Disclaimer]{#disclaimer}** The source code and software distributed
-in this web page has no implied warranty. Use at your own risk.
+## **Disclaimer:** 
 
-**[Symbolic computation code]{#symbolic}** Some of the results in the
-paper were derived using symbolic calculations in
-[Maxima](http://maxima.sourceforge.net). Start Maxima in your system,
-and then you can cut and paste the contents of the files below into the
-command window. The files are commented, so you should be able to follow
-the steps.
+The source code and software distributed in this web page has no
+implied warranty. Use at your own risk.
+
+## **Symbolic computation code:** 
+
+Some of the results in the paper were derived using symbolic
+calculations in [Maxima](http://maxima.sourceforge.net). Start Maxima
+in your system, and then you can cut and paste the contents of the
+files below into the command window. The files are commented, so you
+should be able to follow the steps.
 
 -   Information calculations for linked QTL:
     [2qtl-linked.max](2qtl-linked.max)
@@ -49,7 +52,7 @@ the steps.
     distributions
     [info-calc.max](info-calc.max)
 
-**[Figures]{#figures}**
+## **Figures:**
 
 -   Figures 1 and 2:
     [2qtl-epistatic.R](2qtl-epistatic.R)
