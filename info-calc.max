@@ -1,0 +1,136 @@
+/*
+   =====================================================================
+   Supplementary information for Sen, Johannes, and Broman (2008)
+   "Selective genotyping and phenotyping strategies in a complex trait
+   context."
+
+   Author: Saunak Sen (sen@biostat.ucsf.edu)
+   License: GNU Public License
+   Disclaimer: Use at your own risk; software carries no express or
+               implied warranty.
+   =====================================================================
+*/
+
+/* Information gain functions, and expected information under
+   selective genotyping for selected distributions.  Gives the
+   material for Table 1. */
+
+
+/* define density functions */
+
+/* normal; m is mean, s is standard deviation */
+normpdf(x,m,s) := exp( -(1/2)*( (x-m)/s )^2 ) / (s*sqrt(2*%pi));
+/* cauchy; m is center, s is scale */
+cauchypdf(x,m,s) := 1/(%pi*s*(1+((x-m)/s)^2));
+/* logistic, m is center, s is scale */
+logisticpdf(x,m,s) := (1/s)*exp((x-m)/s) / (1 + exp((x-m)/s))^2;
+/* exponential, s is scale */
+exppdf(x,s) := (1/s)*exp(-x/s);
+/* censored exponential, s is scale, t is censoring time */
+expcensorpdf(x,s,t) := if(y>t) then exp(-t/s) else (1/s)*exp(-x/s);
+/* gamma, m is shape parameter, s is scale parameter */
+gammapdf(x,m,s) := x^(m-1) *exp(-x/s) / ( (s^m) * gamma(m) );
+/* weibull, m is shape parameter, s is scale parameter */
+weibullpdf(x,s,m) := (m/s)*(x/s)^(m-1)*exp(-(x/s)^m);
+/* define binomial density function */
+binomialpdf(x,p) := if (x=0) then (1-p) else if (x=1) then p else 0;
+
+/* prior distribution of genotype */
+gpdf(g,q) := binomialpdf(g,q);
+
+/* q lies between 0 and 1 */
+assume(q>0);
+assume(q<1);
+
+
+/* conditional distributions of phenotype given genotype */
+
+ypdf(y,b,g) := normpdf(y,b*(2*g-1),1); 
+ypdf(y,b,g) := cauchypdf(y,b*(2*g-1),1); 
+ypdf(y,b,g) := logisticpdf(y,b*(2*g-1),1); 
+
+ypdf(y,b,g) := exppdf(y,exp(b*(2*g-1))); 
+ypdf(y,b,g) := gammapdf(y,m,exp(b*(2*g-1)));
+ypdf(y,b,g) := weibullpdf(y,exp(b*(2*g-1)),m); 
+
+ypdf(y,b,g) := expcensorpdf(y,exp(b*(2*g-1)),t); 
+
+
+/* run the following block for each definition of the pheotype distribution
+   given genotype (ypdf) */
+   
+/* ------- begin block ------- */
+
+/* joint distribution of phenotype and genotype */
+ygpdf(y,g,b,q) := ypdf(y,b,g) * gpdf(g,q);
+/* marginal distribution of phenotype */
+ymarpdf(y,b,q) := sum( ygpdf(y,g,b,q), g,0,1 );
+/* posterior distribution of genotype */
+gpostpdf(g,y,b,q) := ygpdf(y,g,b,q)/ymarpdf(y,b,q);
+
+/* information gain function */
+
+infogain_num: diff(gpostpdf(1,y,b,q),b)^2;
+infogain_den: (gpostpdf(1,y,b,q)*gpostpdf(0,y,b,q))^2;
+infogain: infogain_num/infogain_den;
+infogain0: factor(ratsimp(subst(0,b,infogain)));
+
+/* expected missing information */
+/* differentiate the missing data log likelihood twice and then sum over
+   the posterior distribution of the missing data (qtl genotypes) */
+missinfo: ratsimp(sum(ratsimp(diff(diff(-log(gpostpdf(g,y,b,q)),b),b))
+    *gpostpdf(g,y,b,q),g,0,1));
+
+/* expected complete information */
+/* differentiate the complete data data log likelihood twice and then sum over
+   the posterior distribution of the missing data (qtl genotypes) */
+compinfo: ratsimp(sum(ratsimp(diff(diff(-log(ygpdf(y,g,b,q)),b),b))
+    *gpostpdf(g,y,b,q),g,0,1));
+
+/* observed info is the difference between the complete info and the missing info */
+obsinfo : compinfo - missinfo;
+
+/* observed info when genotype observed */
+A: subst(0,b,subst(1,q,obsinfo));
+/* observed info when genotype not observed */
+B: subst(0,b,subst(1/2,q,obsinfo));
+
+/* ------- end block ------- */
+
+/* for normal distribution */
+
+assume(x>0);
+A1: integrate(A*normpdf(y,0,1),y,x,inf);
+B1: integrate(B*normpdf(y,0,1),y,0,x);
+
+/* for cauchy distribution */
+
+assume(x>0)
+A1: integrate(A*cauchypdf(y,0,1),y,x,inf);
+B1: integrate(B*cauchypdf(y,0,1),y,0,x);
+
+/* for logistic distribution */
+
+assume(x>0);
+A1: integrate(factor(A)*logisticpdf(y,0,1),y,x,inf);
+B1: integrate(factor(B)*logisticpdf(y,0,1),y,0,x);
+
+/* for exponential distribution */
+assume(x>0);
+A1: integrate(A*exppdf(y,1),y,x,inf);
+A2: integrate(A*exppdf(y,1),y,0,x);
+B1: integrate(B*exppdf(y,1),y,0,x);
+B2: integrate(B*exppdf(y,1),y,x,inf);
+
+/* for gamma distribution */
+assume(x>0);
+assume(m>0);
+A1: integrate(A*gammapdf(y,m,1),y,x,inf);
+B1: integrate(B*gammapdf(y,m,1),y,0,x);
+
+/* for weibull distribution */
+assume(x>0);
+assume(m>0);
+A1: radcan(integrate(A*weibullpdf(y,1,m),y,x,inf));
+B1: radcan(integrate(B*weibullpdf(y,1,m),y,0,x));
+

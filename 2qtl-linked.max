@@ -1,0 +1,137 @@
+/* --- information for a qtl with small effect in the presence of a second 
+linked qtl of varying effect --- */
+
+/* define normal density function */
+
+normpdf(x,m,s) := exp( -(1/2)*( (x-m)/s )^2 ) / (s*sqrt(2*%PI));
+
+/* define binomial density function */
+
+twoby2(x1,x2,p11,p12,p21,p22) := (if (x1+2*x2=0) then p11 
+                                  else if (x1+2*x2=1) then p12 
+                                  else if (x1+2*x2=2) then p21 
+                                  else if (x1+2*x2=3) then p22 
+                                  else 0);
+
+/* conditional distribution of phenotype given genotype */
+/* note the 2-qtl model */
+
+ypdf(y,b1,b2,g1,g2) := normpdf(y,b1*(2*g1-1)+b2*(2*g2-1),1);
+
+/* prior distribution of genotype */
+/* the two qtls are unlinked and hence independent */
+
+gpdf(g1,g2,q11,q12,q21,q22) := twoby2(g1,g2,q11,q12,q21,q22);
+
+/* joint distribution of phenotype and genotype */
+/* we get this by just multiplying the prior with the likelihood */
+
+ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22) := 
+           ypdf(y,b1,b2,g1,g2) * gpdf(g1,g2,q11,q12,q21,q22);
+
+/* marginal distribution of phenotype */
+/* obtained by integrating (summing) over the missing data (g1 and g2) */
+
+ymarpdf(y,b1,b2,q11,q12,q21,q22) := 
+	sum( sum( ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22), g1,0,1 ), g2,0,1);
+
+/* posterior distribution of genotype */
+/* joint dist / marginal dist */
+
+gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22) := 
+	ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22)/ymarpdf(y,b1,b2,q11,q12,q21,q22);
+
+/* establish constraints */
+
+/* for simplicity assume that we are at an ungenotyped location */
+assume(t>0);
+assume(t<1);
+q11:(1-t)/2;
+q12:t/2;
+q21:t/2;
+q22:(1-t)/2;
+
+/* information of the missing data likelihood */
+
+/* we get each entry in the missing information matrix by
+differentiating the missing data likelihood twice and then summing
+over the posterior distribution of the qtl genotypes */
+
+im11 : (sum(sum(diff(diff(
+            -log(gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22)),b1),b1)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+im12 : (sum(sum(diff(diff(
+            -log(gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22)),b1),b2)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+im21 : (sum(sum(diff(diff(
+            -log(gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22)),b2),b1)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+im22 : (sum(sum(diff(diff(
+            -log(gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22)),b2),b2)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+
+/* make the missing information matrix */
+
+Im : matrix( [im11,im12], [im21,im22] );
+
+/* simplify the expression by considering the case when the first qtl
+has negligibly small effect; subsitute 0 for b1 */
+
+Im : subst(b,b2,Im);
+Im : subst(0,b1,Im);
+Im : ratsimp(Im);
+
+/* 
+Now we try to show that the missing information matrix (Im) has the form
+   [ A + 4*t(1-t)*B   (1-2*t)*A ]
+   [   (1-2*t)*A          A     ],
+where A = y^2*sech^2(b*y) and B = (y*tanh(b*y)-b)^2.
+*/
+
+/* assign A to the obvious */
+A : Im[2,2];
+/* show that it is what we claim it is */
+radcan(y^2*exponentialize((sech(b*y))^2)) - A;
+
+/* the off diagonal element */
+factor(Im[1,2]/A);
+
+/* the (1,1)-th element */
+Z : exponentialize(A) + 4*t*(1-t)*exponentialize((y*tanh(b*y)-b)^2);
+ratsimp(Im[1,1]-Z);
+
+
+/* complete information matrix */
+
+/* obtained by taking the second derivative of the complete data
+likeihood and then summing over the posterior distribution of the
+missing data (qtl genotypes) */
+
+ic11 : (sum(sum(diff(
+            -log(ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22)),b1,2)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+ic12 : (sum(sum(diff(diff(
+            -log(ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22)),b1),b2)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+ic21 : (sum(sum(diff(diff(
+            -log(ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22)),b2),b1)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+ic22 : (sum(sum(diff(diff(
+            -log(ygpdf(y,g1,g2,b1,b2,q11,q12,q21,q22)),b2),b2)
+            *gpostpdf(g1,g2,y,b1,b2,q11,q12,q21,q22),g1,0,1),g2,0,1));
+
+Ic : matrix( [ic11,ic12], [ic21,ic22] );
+Ic : subst(b,b2,Ic);
+Ic : subst(0,b1,Ic);
+Ic : ratsimp(Ic);
+
+Io : Ic-Im;
+
+/* Overall information matrices */
+
+Ic : matrix( [1,(1-2*t)], [(1-2*t),1] );
+Vc : factor(ratsimp(invert(Ic)));
+Im : matrix( [A+4*t*(1-t)*B,(1-2*t)*A], [(1-2*t)*A,A] );
+Io : Ic - Im;
+Vo : factor(ratsimp(invert(Io)));
+
